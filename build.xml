@@ -146,6 +146,7 @@
 
   <target name="maven" depends="all,test" description="generate the maven jar">
     <copy file="License" todir="classes/kilim" />
+    <copy file="pausable.list" todir="classes/kilim" />
 	<jar jarfile="kilim.jar" basedir="classes">
       <exclude name="kilim/test/**" />
       <exclude name="kilim/examples/**" />
