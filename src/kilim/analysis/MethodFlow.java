@@ -5,27 +5,9 @@
  */
 
 package kilim.analysis;
-import static kilim.Constants.NOT_PAUSABLE_CLASS;
-import static kilim.Constants.PAUSABLE_CLASS;
-import static kilim.analysis.BasicBlock.COALESCED;
-import static kilim.analysis.BasicBlock.ENQUEUED;
-import static kilim.analysis.BasicBlock.INLINE_CHECKED;
-import static org.objectweb.asm.Opcodes.ACC_STATIC;
-import static org.objectweb.asm.Opcodes.ACC_VOLATILE;
-import static org.objectweb.asm.Opcodes.JSR;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.TreeMap;
 
 import kilim.KilimException;
 import kilim.mirrors.Detector;
-
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -39,6 +21,28 @@ import org.objectweb.asm.tree.LineNumberNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TryCatchBlockNode;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.TreeMap;
+
+import static kilim.Constants.NOT_PAUSABLE_CLASS;
+import static kilim.Constants.PAUSABLE_CLASS;
+import static kilim.analysis.BasicBlock.COALESCED;
+import static kilim.analysis.BasicBlock.ENQUEUED;
+import static kilim.analysis.BasicBlock.INLINE_CHECKED;
+import static org.objectweb.asm.Opcodes.ACC_STATIC;
+import static org.objectweb.asm.Opcodes.ACC_VOLATILE;
+import static org.objectweb.asm.Opcodes.JSR;
 
 
 /** 
@@ -91,6 +95,24 @@ public class MethodFlow extends MethodNode {
     private TreeMap<Integer, LineNumberNode> lineNumberNodes = new TreeMap<Integer, LineNumberNode>();
 
     private HashMap<Integer, FrameNode> frameNodes = new HashMap<Integer, FrameNode>();
+
+    private static List<String> pausableList = Collections.emptyList();
+
+    static {
+        File file = new File("pausable.list");
+        if (file.exists()) {
+            pausableList = new ArrayList<>();
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(file));
+                String content;
+                while ((content = br.readLine()) != null) {
+                    pausableList.add(content);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
     
     public MethodFlow(
             ClassFlow classFlow,
@@ -108,7 +130,7 @@ public class MethodFlow extends MethodNode {
         labelToBBMap = new HashMap<LabelNode, BasicBlock>();
 
         if (exceptions != null && exceptions.length > 0) {
-            for (String e: exceptions) { 
+            for (String e: exceptions) {
                 if (e.equals(PAUSABLE_CLASS)) {
                     hasPausableAnnotation = true;
                     break;
@@ -116,6 +138,10 @@ public class MethodFlow extends MethodNode {
                     suppressPausableCheck = true;
                 }
             }
+        }
+
+        if (pausableList.contains(classFlow.getClassName() + "." + name)) {
+            hasPausableAnnotation = true;
         }
     }
 
@@ -215,13 +241,19 @@ public class MethodFlow extends MethodNode {
         // functionality.
         if (!classFlow.isWoven) {
             int methodStatus = detector.getPausableStatus(owner, name, desc);
-            if (methodStatus == Detector.PAUSABLE_METHOD_FOUND) {
+            int methodStatus1 = getPausableStatus(owner, name);
+            if (methodStatus == Detector.PAUSABLE_METHOD_FOUND || methodStatus1 == Detector.PAUSABLE_METHOD_FOUND) {
                 MethodInsnNode min = (MethodInsnNode)instructions.get(instructions.size()-1);
                 pausableMethods.add(min);
             }
         }
     }
-    
+
+    private int getPausableStatus(String className, String methodName) {
+        className = className.replace('/', '.');
+        return pausableList.contains(className + "." + methodName) ? Detector.PAUSABLE_METHOD_FOUND : Detector.METHOD_NOT_PAUSABLE;
+    }
+
     @Override
     public void visitLabel(Label label) {
         setLabel(instructions.size(), super.getLabelNode(label));
