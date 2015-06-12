@@ -37,8 +37,8 @@ Thumbs.db
 *.ver
 
 # package ignore (optional)
-# *.jar
-# *.war
-# *.zip
-# *.tar
-# *.tar.gz
+*.jar
+*.war
+*.zip
+*.tar
+*.tar.gz
