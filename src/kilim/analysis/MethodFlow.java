@@ -214,14 +214,14 @@ public class MethodFlow extends MethodNode {
             }
             throw new KilimException(msg);
         }
-        if (classFlow.superName != null) {
+        /*if (classFlow.superName != null) {
             checkStatus(classFlow.superName, name, desc);
         }
         if (classFlow.interfaces != null) {
             for (Object ifc: classFlow.interfaces) {
                 checkStatus((String) ifc, name, desc);
             }
-        }
+        }*/
     }
 
     private void checkStatus(String superClassName, String methodName, String desc) throws KilimException {
