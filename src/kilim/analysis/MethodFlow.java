@@ -26,8 +26,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -99,11 +102,11 @@ public class MethodFlow extends MethodNode {
     private static List<String> pausableList = Collections.emptyList();
 
     static {
-        File file = new File("pausable.list");
-        if (file.exists()) {
+        InputStream inputStream = MethodFlow.class.getClassLoader().getResourceAsStream("pausable.list");
+        if (inputStream != null) {
             pausableList = new ArrayList<>();
             try {
-                BufferedReader br = new BufferedReader(new FileReader(file));
+                BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
                 String content;
                 while ((content = br.readLine()) != null) {
                     pausableList.add(content);
@@ -140,9 +143,18 @@ public class MethodFlow extends MethodNode {
             }
         }
 
-        if (pausableList.contains(classFlow.getClassName() + "." + name)) {
+        if (contains(classFlow.getClassName() + "." + name)) {
             hasPausableAnnotation = true;
         }
+    }
+
+    private boolean contains(String key) {
+        for (String pausable : pausableList) {
+            if (key.equals(pausable) || key.matches(pausable)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void restoreNonInstructionNodes() {
@@ -251,7 +263,7 @@ public class MethodFlow extends MethodNode {
 
     private int getPausableStatus(String className, String methodName) {
         className = className.replace('/', '.');
-        return pausableList.contains(className + "." + methodName) ? Detector.PAUSABLE_METHOD_FOUND : Detector.METHOD_NOT_PAUSABLE;
+        return contains(className + "." + methodName) ? Detector.PAUSABLE_METHOD_FOUND : Detector.METHOD_NOT_PAUSABLE;
     }
 
     @Override
